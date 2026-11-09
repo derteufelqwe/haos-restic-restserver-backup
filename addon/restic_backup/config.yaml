@@ -1,0 +1,17 @@
+name: Restic Restserver Backup
+version: "0.1.0"
+slug: restic_backup
+description: HTTP API bridging the restic_backup Core integration to a restic repository
+url: "https://github.com/derteufelqwe/haos-restic-restserver-backup"
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: application
+boot: auto
+# No `ports`: the Core integration finds the add-on via the Supervisor and reaches it over
+# the internal add-on network, so nothing is exposed to the LAN.
+watchdog: "http://[HOST]:[PORT:8099]/health"
+map:
+  - type: data
+    read_only: false

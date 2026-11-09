@@ -1,0 +1,15 @@
+{
+  "domain": "restic_backup",
+  "name": "Restic Restserver Backup",
+  "after_dependencies": ["backup", "hassio"],
+  "codeowners": ["@derteufelqwe"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http"],
+  "documentation": "https://github.com/derteufelqwe/haos-restic-restserver-backup",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/derteufelqwe/haos-restic-restserver-backup/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

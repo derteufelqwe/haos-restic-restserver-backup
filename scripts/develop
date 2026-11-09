@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -e
+cd "$(dirname "$0")/.."
+
+mkdir -p "${PWD}/config"
+
+# HA installs integration requirements here, and Python only puts it on sys.path if it exists at startup.
+mkdir -p "$(python3 -m site --user-site)"
+
+if [[ ! -f "${PWD}/config/configuration.yaml" ]]; then
+    cat > "${PWD}/config/configuration.yaml" <<'EOF'
+default_config:
+backup:
+
+logger:
+  default: info
+  logs:
+    custom_components.restic_backup: debug
+EOF
+fi
+
+# Supervisor runs the add-on on HAOS; here it runs next to HA.
+export RESTIC_BACKUP_ADDON_URL="http://localhost:8099"
+export RESTIC_BACKUP_DATA_DIR="${PWD}/config/restic-addon-data"
+mkdir -p "${RESTIC_BACKUP_DATA_DIR}"
+python3 addon/restic_backup/app/server.py &
+addon_pid=$!
+trap 'kill "${addon_pid}" 2>/dev/null || true' EXIT
+
+export PYTHONPATH="${PYTHONPATH}:${PWD}/custom_components"
+hass --config "${PWD}/config" --debug

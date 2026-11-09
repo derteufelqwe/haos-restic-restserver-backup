@@ -1,94 +1,68 @@
-# haos-restic-backups
+# Restic Backup for Home Assistant
 
-Makes a restic repository selectable as a backup Location in Home Assistant's
-Settings → System → Backups page, alongside "This system" and HA Cloud.
+This Home Assistant addon allows you to store your backups directly on a remote [restic](https://restic.net/) server via the 
+[restic rest server](https://github.com/restic/rest-server). For security reasons it's assumed the `--append-only` flag is configured
+and backup pruning is done by restic instead of HaOS. (Otherwise, an attacker that as access to your HaOS could delete all your backups)
 
-Two pieces:
+This plugin assumes this network / server setup:
 
-- `custom_components/restic_backup` — a Core integration implementing the
-  `BackupAgent` platform. This is what makes the Location show up in the
-  picker, and it's where you enter your restic connection details (there's no
-  separate add-on configuration step). It holds no restic logic itself; it
-  forwards backup bytes, plus your connection details, to:
-- `addon/restic_backup` — a Supervisor add-on with no configuration of its own.
-  It exposes a small HTTP API (`/verify`, `/backups`, `/backups/{id}/upload`,
-  `/backups/{id}/download`, `/backups/{id}`) that the integration calls into,
-  building a restic `rest:` repository URL fresh from each request's headers
-  and running restic against it.
+![server setup](docs/server_setup.drawio.svg "The recommended server setup")
 
-Backups can't be deleted through Home Assistant: this location refuses every
-delete, including automatic retention. Turn retention off for it, and prune the
-repository directly on the restic side when it needs to shrink.
 
-Backups are listed from an index kept in the add-on, so the repository's disk
-isn't touched when you browse them. After each successful backup, while the disk
-is awake anyway, the integration has the add-on compare the index with the
-repository and forget backups you pruned there. The device's "Sync with
-repository" button does the same on demand. Between syncs, a pruned backup still
-shows up.
+## Installation
 
-When adding the integration (Settings → Devices & Services → Add Integration →
-Restic Backup), you'll be asked for:
+Needs Home Assistant OS or Supervised, because the restic part runs as an add-on.
 
-- **Server URL** — your restic REST server's address (https://github.com/restic/rest-server).
-- **Server username** / **Server password** — HTTP Basic Auth for the rest-server
-  itself, if it requires one. Entered as separate fields; the integration builds the
-  authenticated request internally, you never type a combined URL.
-- **Repository password** — the restic repository's own encryption password.
-  Unrelated to the server username/password above.
+1. **Add-on**: add this repository to the Add-on Store, then install and start
+   "Restic Restserver Backup".
 
-Submitting the form has the add-on actually try to reach the repository with these
-credentials (and initialize it, if it doesn't exist yet) before the entry is created.
+   [![Add repository to your Home Assistant.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fderteufelqwe%2Fhaos-restic-restserver-backup)
 
-## Developing the integration
+2. **Integration**: install it with [HACS](https://hacs.xyz) (custom repository, category
+   Integration), then restart Home Assistant.
 
-No Home Assistant Core checkout needed — this uses the same devcontainer
-pattern as `ludeeus/integration_blueprint`.
+   [![Open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=derteufelqwe&repository=haos-restic-restserver-backup&category=integration)
 
-1. Open this folder in VS Code and "Reopen in Container" (runs `scripts/setup`,
-   which `pip install`s a released `homeassistant` package).
-2. Run `scripts/develop` in the integrated terminal. First run writes a throwaway
-   `config/configuration.yaml` (gitignored) and boots HA with
-   `custom_components/restic_backup` on `PYTHONPATH`, forwarded on port 8123.
-   Keep `default_config:` in that file: HA installs the Python packages for the
-   integrations it sets up at startup, and the frontend needs those packages even
-   if you never use the integrations. They live in `~/.local`, so a container
-   rebuild deletes them and the next start downloads them again.
-3. To hit breakpoints, add to `config/configuration.yaml`:
-   ```yaml
-   debugpy:
-     start: true
-     wait: true
-   ```
-   then run `scripts/develop` again and use the "Python: Attach to Home Assistant"
-   launch config (`.vscode/launch.json`, port 5678) to attach.
-4. Add the integration from Settings → Devices & Services, pointing it at a real
-   restic REST server. `scripts/develop` also starts the add-on's `server.py` on
-   `localhost:8099` and points the integration at it, so no HAOS VM is needed.
+3. **Set up**: add the integration and enter your details.
 
-The **Server URL** must include the repository path, e.g.
-`http://192.168.1.50:16789/myrepo`. With `--private-repos`, the path must match
-the server username.
+   [![Add the integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=restic_backup)
 
-## Developing the add-on
 
-Since it has no options of its own, the add-on itself barely needs "configuring" —
-`scripts/develop` runs its `server.py` directly, using the devcontainer's `restic`.
-Restart `scripts/develop` to pick up changes.
+## Configuration
 
-For the full Supervisor-hosted path (S6 service, `rootfs/`, real add-on lifecycle):
+During installation you have to configure:
 
-1. Copy (or symlink via the Samba share / SSH & Web Terminal add-on)
-   `addon/restic_backup/` into HAOS's local add-ons folder.
-2. Settings → Add-ons → Add-on Store → local add-ons → install, start.
-3. After each code change: **Rebuild**, then **Restart** — logs are in the
-   add-on's Log tab.
-4. `curl -X POST -H "X-Rest-Url: http://..." -H "X-Repo-Password: ..." http://<haos-ip>:8099/verify`
-   confirms it's up and can reach a real repository before wiring the integration to it.
+- **Server URL**: The URL + port + path to the restic repository on the restic rest server
+- **Username**: Username for login on the rest server
+- **Password**: Password to login on the rest server
+- **Repo Password**: Restics repo password
 
-## End-to-end check
 
-With both sides running and the integration's config entry created: trigger a manual
-backup targeting the new Location from HA's Backups page, confirm `restic snapshots`
-against the configured rest-server shows a new snapshot tagged with the backup id,
-then restore it back through the same UI.
+## Features
+
+- Backups appear as a normal backup location: create, list, download and restore from the Backups page.
+- The restic repository is created on first use. A wrong password or server URL is an
+  error and never creates a second repository.
+- Browsing backups doesn't wake the repository's disk: they are listed from an index kept by the
+  add-on. Home Assistant only contacts the repository for uploads, downloads and syncs.
+- A backup is only stored if all of its bytes arrive. A broken upload leaves no snapshot behind.
+- Deleting is disabled: Home Assistant can't remove backups from restic (a toast says so).
+  Prune on the restic side instead.
+- After each backup, and with the device's "Sync with repository" button, backups you pruned in
+  restic are removed from the list. If the add-on's data is ever lost, the list is rebuilt from the repository.
+- Failed downloads show an error toast.
+- No port is opened on your network. Only Home Assistant talks to the add-on.
+
+
+## Development
+
+Open the folder in VS Code and "Reopen in Container" (installs Home Assistant and restic), then run
+`scripts/develop`. It starts the add-on's `server.py` next to Home Assistant (port 8123) and
+points the integration at it, so no HAOS is needed. Add the integration in the UI, pointed at a
+real rest-server. Changes to either part take effect after restarting `scripts/develop`.
+
+- Breakpoints: add `debugpy: {start: true, wait: true}` to `config/configuration.yaml` and use
+  the "Python: Attach to Home Assistant" launch config.
+- The full add-on lifecycle (s6, `rootfs/`, Supervisor) can be tried by copying `addon/restic_backup/`
+  to `/addons/` on HAOS and installing it from "Local add-ons".
+- Layout: `custom_components/restic_backup` is the integration, `addon/restic_backup` the add-on.

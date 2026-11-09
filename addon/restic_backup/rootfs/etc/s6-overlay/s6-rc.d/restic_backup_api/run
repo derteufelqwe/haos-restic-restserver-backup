@@ -1,0 +1,9 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Starts the restic-backup HTTP API.
+# No add-on options needed - the restic_backup Core integration sends the
+# rest-server connection details and repository password on every request.
+# ==============================================================================
+bashio::log.info "Starting restic-backup API on port 8099"
+cd /app || exit 1
+exec python3 server.py

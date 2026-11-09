@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Connect to your restic REST server (https://github.com/restic/rest-server).",
+        "data": {
+          "url": "Server URL",
+          "username": "Server username",
+          "password": "Server password",
+          "repo_password": "Repository password"
+        },
+        "data_description": {
+          "url": "The restic-rest-server's own address, including the repository path, e.g. http://192.168.1.50:8000/myrepo",
+          "username": "HTTP Basic Auth username for the rest-server, if it requires one",
+          "password": "HTTP Basic Auth password for the rest-server, if it requires one",
+          "repo_password": "The restic repository's encryption password. Unrelated to the server username/password above."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the restic repository with these settings."
+    },
+    "abort": {
+      "single_instance_allowed": "Only one restic location can be configured.",
+      "addon_not_installed": "The Restic Restserver Backup add-on is not installed. Install it from the Add-on Store, start it, and try again.",
+      "addon_not_running": "The Restic Restserver Backup add-on is not running. Start it and try again.",
+      "addon_unavailable": "Could not ask the Supervisor about the Restic Restserver Backup add-on. Check the Home Assistant log."
+    }
+  }
+}

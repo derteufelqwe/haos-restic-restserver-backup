@@ -1,0 +1,4 @@
+homeassistant==2026.3.4
+home-assistant-frontend==20260312.1
+debugpy
+colorlog==6.10.1
